@@ -7,7 +7,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import Swal from 'sweetalert2';
 
 import EditEventModal from './CalendarComponents/CalendarModals/EditEventModal.tsx';
-import NewEventModal from './CalendarComponents/CalendarModals/NewEventModal.tsx';
+import NewEventModal, { type SelectedInfo } from './CalendarComponents/CalendarModals/NewEventModal.tsx';
 import ViewEventModal from './CalendarComponents/CalendarModals/ViewEventModal.tsx';
 
 import { enUS } from 'date-fns/locale';
@@ -177,9 +177,10 @@ const Calendar = () => {
 
   const handleSelectSlot = (slotInfo: any) => {
     setSelectedInfo({
-      start_date: slotInfo.start,
-      end_date: slotInfo.end,
-    } as CalendarEvent);
+      startStr: slotInfo.start,
+      endStr: slotInfo.end,
+      allDay: slotInfo.allDay,
+    });
     setShowModal(true);
   };
 

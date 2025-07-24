@@ -1,30 +1,22 @@
 import { createSlice } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
-
-interface CalendarEvent {
-    id: string;
-    [key: string]: any;
-}
-
-const initialState: CalendarEvent[] = [];
 
 const calendarEventSlice = createSlice({
     name: 'calendarEvents',
-    initialState,
+    initialState: [],
     reducers: {
-        setCalendarEvents(state, action: PayloadAction<CalendarEvent[]>) {
+        setCalendarEvents(state, action) {
             return action.payload;
         },
-        addCalendarEvent(state, action: PayloadAction<CalendarEvent>) {
+        addCalendarEvent(state, action) {
             state.push(action.payload);
         },
-        removeCalendarEvent(state, action: PayloadAction<string>) {
+        removeCalendarEvent(state, action) {
             const index = state.findIndex(calendarEvent => calendarEvent.id === action.payload);
             if (index !== -1) {
                 state.splice(index, 1);
             }
         },
-        updateCalendarEvent(state, action: PayloadAction<{ id: string; newData: Partial<CalendarEvent> }>) {
+        updateCalendarEvent(state, action) {
             const { id, newData } = action.payload;
             const calendarEvent = state.find(calendarEvent => calendarEvent.id === id);
             if (calendarEvent) {
@@ -35,6 +27,6 @@ const calendarEventSlice = createSlice({
 });
 
 export const { setCalendarEvents, addCalendarEvent, removeCalendarEvent, updateCalendarEvent } = calendarEventSlice.actions;
-export const selectCalendarEvents = (state: { calendarEvents: CalendarEvent[] }) => state.calendarEvents;
+export const selectCalendarEvents = state => state.calendarEvents;
 
 export default calendarEventSlice.reducer;
