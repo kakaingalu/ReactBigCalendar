@@ -1,0 +1,4 @@
+/* Custom CSS for FullCalendar header */
+.fc-h-event {
+    border: 0px solid;
+} 
