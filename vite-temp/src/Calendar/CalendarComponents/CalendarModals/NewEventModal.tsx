@@ -1,34 +1,70 @@
-import { useState, useEffect } from 'react';
-import { Formik, Form, Field } from 'formik';
+import React, { useState, useEffect } from 'react';
+import { Formik, Form, Field, FormikHelpers, FormikProps } from 'formik';
 import * as Yup from 'yup';
-// import axios from 'axios';
 import { Modal, Button, Form as BootstrapForm, Row, Col } from 'react-bootstrap';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, Theme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Chip from '@mui/material/Chip';
 import Swal from 'sweetalert2';
-// import { addCalendarEvent } from '@redux/features/calendarEventSlice'; // To be handled by parent
-// import { useDispatch } from 'react-redux'; // To be handled by parent
 import { useSelector, useDispatch } from 'react-redux';
-// Removed selectEmployees and setEmployee imports because they do not exist in calendarEventSlice
-// Updated imports for casesSlice to correct named exports
 import { selectCalendarEvents, setCalendarEvents } from '../../../redux/casesSlice';
-const setCasesRedux = setCalendarEvents;
 import axiosInstance from '../../../services/httpService';
 
-// Assuming formatDateForInput is in a utils file or defined above
-// import { formatDateForInput } from './utils/dateUtils';
-// Or define it here:
-interface FormatDateForInput {
-    (dateStr: string | Date | undefined | null): string;
+const setCasesRedux = setCalendarEvents;
+
+interface Employee {
+    id: string;
+    full_name: string;
 }
 
-const formatDateForInput: FormatDateForInput = (dateStr) => {
+interface Case {
+    id: string;
+    caseNumber: string;
+    matter_title: string;
+    clientID: string;
+    client_name: string;
+}
+
+interface EventDetails {
+    title: string;
+    description: string;
+    clientID: string;
+    case: string;
+    case_reason: string;
+    location: string;
+    court: string;
+    priority: string;
+    start_date: string;
+    end_date: string;
+    attendees: string[];
+    sendReminders: boolean;
+}
+
+interface SelectedInfo {
+    startStr: string;
+    endStr: string;
+    allDay: boolean;
+}
+
+interface NewEventModalProps {
+    selectedInfo: SelectedInfo | null;
+    show: boolean;
+    onHide: () => void;
+    onEventAddSuccess: (event: any) => void;
+}
+
+interface MultipleChipSelectProps {
+    setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void;
+    initialAttendees?: string[];
+    employeeOptions?: Employee[];
+}
+
+const formatDateForInput = (dateStr: string | Date | undefined | null): string => {
     if (!dateStr) return '';
     try {
         return new Date(dateStr).toISOString().split('T')[0];
@@ -49,9 +85,6 @@ const MenuProps = {
     },
 };
 
-
-import type { Theme } from '@mui/material/styles';
-
 function getStyles(name: string, personName: readonly string[], theme: Theme): React.CSSProperties {
     return {
         fontWeight:
@@ -59,12 +92,6 @@ function getStyles(name: string, personName: readonly string[], theme: Theme): R
                 ? theme.typography.fontWeightRegular
                 : theme.typography.fontWeightMedium,
     };
-}
-
-interface MultipleChipSelectProps {
-    setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void;
-    initialAttendees?: any[];
-    employeeOptions?: any[];
 }
 
 const MultipleChipSelect: React.FC<MultipleChipSelectProps> = ({ setFieldValue, initialAttendees = [], employeeOptions = [] }) => {
@@ -77,13 +104,13 @@ const MultipleChipSelect: React.FC<MultipleChipSelectProps> = ({ setFieldValue, 
         }
     }, [initialAttendees]);
 
-    const handleChange = (event: { target: { value: any; }; }) => {
+    const handleChange = (event: SelectChangeEvent<string[]>) => {
         const {
             target: { value },
         } = event;
         const newAttendees = typeof value === 'string' ? value.split(',') : value;
         setFieldValue("attendees", newAttendees);
-        setPersonName(newAttendees);
+        setPersonName(newAttendees as string[]);
     };
     
     return (
@@ -112,7 +139,7 @@ const MultipleChipSelect: React.FC<MultipleChipSelectProps> = ({ setFieldValue, 
                             key={employee.id}
                             value={employee.id}
                             style={getStyles(employee.full_name, personName.map(id => {
-                                const emp = employeeOptions.find((e: { id: any; }) => e.id === id);
+                                const emp = employeeOptions.find((e) => e.id === id);
                                 return emp ? emp.full_name : '';
                             }), theme)}
                         >
@@ -125,7 +152,6 @@ const MultipleChipSelect: React.FC<MultipleChipSelectProps> = ({ setFieldValue, 
     );
 };
 
-
 function getBGColor(reason: string): string {
     switch (reason) {
         case 'Hearing': return '#3498db';
@@ -137,44 +163,18 @@ function getBGColor(reason: string): string {
     }
 }
 
-interface EventDetails {
-    title: string;
-    description: string;
-    clientID: string;
-    case: string;
-    case_reason: string;
-    location: string;
-    court: string;
-    priority: string;
-    start_date: string;
-    end_date: string;
-    attendees: string[];
-    sendReminders: boolean;
-}
-
-interface SelectedInfo {
-    startStr: string;
-    endStr: string;
-    allDay: boolean;
-}
-
-// This function should ideally be passed via props or be part of a service
 const createNewCalendarEventAPI = async (eventDetails: EventDetails, selectedInfo: SelectedInfo) => {
     const eventsUrl = "pms/calendar-events/";
     const calendarEventDetails = {
-        ...eventDetails, // includes title, description, case, clientID etc from form
-        start_date: selectedInfo.startStr, // Or eventDetails.start_date if you want to use the formatted one
-        end_date: selectedInfo.endStr,     // Or eventDetails.end_date
+        ...eventDetails,
+        start_date: selectedInfo.startStr,
+        end_date: selectedInfo.endStr,
         all_day: selectedInfo.allDay,
-        // Backend should ideally set its own background color based on reason or other logic
-        // background_color: getBGColor(eventDetails.case_reason), 
     };
 
     try {
         const response = await axiosInstance.post(eventsUrl, calendarEventDetails);
         if (response.status === 201 && response.data) {
-            // Add client-side determined color if backend doesn't provide it
-            // This is for immediate display in FullCalendar if backend response doesn't include it.
             return { ...response.data, backgroundColor: getBGColor(response.data.case_reason || eventDetails.case_reason) };
         }
         throw new Error(`Server responded with status: ${response.status}`);
@@ -189,32 +189,21 @@ const createNewCalendarEventAPI = async (eventDetails: EventDetails, selectedInf
     }
 };
 
-
-interface NewEventModalProps {
-    selectedInfo: SelectedInfo | null;
-    show: boolean;
-    onHide: () => void;
-    onEventAddSuccess: (event: any) => void;
-}
-
 const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHide, onEventAddSuccess }) => {
     const dispatch = useDispatch();
-    const allCases = useSelector(selectCalendarEvents); 
-    const [employees, setEmployees] = useState([]);
+    const allCases = useSelector(selectCalendarEvents) as Case[]; 
+    const [employees, setEmployees] = useState<Employee[]>([]);
     const [selectedClientName, setSelectedClientName] = useState('');
 
-    // Fetch initial data for dropdowns (cases, employees for attendees)
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch Cases if not in Redux
                 if (!allCases || allCases.length === 0) {
                     const caseResponse = await axiosInstance.get('pms/cases/');
                     if (caseResponse.status !== 200) throw new Error(`HTTP error fetching cases! Status: ${caseResponse.status}`);
                     const casesData = await caseResponse.data;
-                dispatch(setCasesRedux(casesData)); // Update Redux store
+                    dispatch(setCasesRedux(casesData));
                 }
-                // Fetch Employees (for MultipleChipSelect)
                 const employeeResponse = await axiosInstance.get('pms/employees/');
                 if (employeeResponse.data) {
                     setEmployees(employeeResponse.data);
@@ -232,18 +221,14 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
         fetchData();
     }, [dispatch, allCases]);
 
-
     const handleCaseChange = (e: React.ChangeEvent<HTMLSelectElement>, setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void) => {
         const caseId = e.target.value;
-        setFieldValue("case", caseId); // Store case
+        setFieldValue("case", caseId);
 
         const selectedCase = allCases.find(c => c.id.toString() === caseId.toString());
         if (selectedCase) {
-            setFieldValue("clientID", selectedCase.clientID); // Store clientID
-            // Fetch client details if only clientID is stored in case, or use name from case object
-            // This part depends on your data structure for clients.
-            // For now, assuming selectedCase has client_name or similar.
-            setSelectedClientName(selectedCase.client_name || 'Client name not found'); // Display client_name
+            setFieldValue("clientID", selectedCase.clientID);
+            setSelectedClientName(selectedCase.client_name || 'Client name not found');
         } else {
             setFieldValue("clientID", "");
             setSelectedClientName('');
@@ -268,11 +253,11 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
         sendReminders: Yup.boolean(),
     });
 
-    const initialValues = {
+    const initialValues: EventDetails = {
         title: '',
         description: '',
-        clientID: '', // Will be set by case selection
-        case: '',   // User selects this
+        clientID: '',
+        case: '',
         case_reason: 'Hearing',
         court: '',
         priority: 'Medium',
@@ -283,7 +268,7 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
         sendReminders: true,
     };
 
-    const handleSubmit = async (values: EventDetails, { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }) => {
+    const handleSubmit = async (values: EventDetails, { setSubmitting }: FormikHelpers<EventDetails>) => {
         if (!selectedInfo) {
             Swal.fire('Error!', 'No date selected.', 'error');
             setSubmitting(false);
@@ -294,7 +279,7 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
             const createdEventData = await createNewCalendarEventAPI(values, selectedInfo);
             Swal.fire('Success!', 'Event Created Successfully', 'success');
             if (onEventAddSuccess) {
-                onEventAddSuccess(createdEventData); // Pass new event to parent
+                onEventAddSuccess(createdEventData);
             }
         } catch (error: unknown) {
             console.error('Error submitting form:', error);
@@ -305,7 +290,6 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
             }
         } finally {
             setSubmitting(false);
-            // onHide(); // Parent should handle hiding on success
         }
     };
 
@@ -320,7 +304,7 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
                 onSubmit={handleSubmit}
                 enableReinitialize
             >
-                {({ values, errors, touched, isSubmitting, setFieldValue }) => (
+                {({ values, errors, touched, isSubmitting, setFieldValue }: FormikProps<EventDetails>) => (
                     <Form>
                         <Modal.Body>
                             <Row className="g-2 mb-3">
@@ -367,7 +351,7 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
                                         <Field
                                             as="select"
                                             name="case"
-                                            onChange={(e) => handleCaseChange(e, setFieldValue)}
+                                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleCaseChange(e, setFieldValue)}
                                             className={`form-select ${errors.case && touched.case ? 'is-invalid' : ''}`}
                                         >
                                             <option value="">Select Case</option>
@@ -382,7 +366,6 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
                                     <BootstrapForm.Group controlId="newEventClient">
                                         <BootstrapForm.Label>Client (auto-filled from Case)</BootstrapForm.Label>
                                         <BootstrapForm.Control type="text" value={selectedClientName} disabled readOnly />
-                                        {/* Hidden field for clientID if needed by form submission and not just for display */}
                                         <Field name="clientID" type="hidden" /> 
                                         {errors.clientID && touched.clientID && <BootstrapForm.Control.Feedback type="invalid">{errors.clientID}</BootstrapForm.Control.Feedback>}
                                     </BootstrapForm.Group>
@@ -443,13 +426,13 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
                                         initialAttendees={values.attendees}
                                         employeeOptions={employees}
                                     />
-                                    {errors.attendees && touched.attendees && <div className="invalid-feedback d-block">{errors.attendees}</div>}
+                                    {errors.attendees && touched.attendees && <div className="invalid-feedback d-block">{typeof errors.attendees === 'string' && errors.attendees}</div>}
                                 </Col>
                             </Row>
 
                             <BootstrapForm.Group controlId="newEventSendReminders" className="mb-3">
                                 <Field name="sendReminders" type="checkbox" as={BootstrapForm.Check} checked={values.sendReminders} label="Send Reminders to Attendees" className={`${errors.sendReminders && touched.sendReminders ? 'is-invalid' : ''}`} />
-                                {errors.sendReminders && touched.sendReminders && <BootstrapForm.Control.Feedback type="invalid">{errors.sendReminders}</BootstrapForm.Control.Feedback>}
+                                {errors.sendReminders && touched.sendReminders && <BootstrapForm.Control.Feedback type="invalid">{errors.sendReminders as string}</BootstrapForm.Control.Feedback>}
                             </BootstrapForm.Group>
 
                         </Modal.Body>
@@ -469,3 +452,4 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ selectedInfo, show, onHid
 }
 
 export default NewEventModal;
+
