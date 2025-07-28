@@ -78,6 +78,11 @@
   @apply bg-blue-100;
 }
 
+.rbc-day-bg,
+.rbc-time-slot {
+  @apply cursor-pointer;
+}
+
 /* Sidebar styles */
 .calendar-page-wrapper {
   @apply h-full flex flex-col;

@@ -66,6 +66,8 @@ const Calendar = () => {
     const storedCalendarEvents = useSelector(selectCalendarEvents);
     const [events, setEvents] = useState([]);
     const [eventsFromServer, setEventsFromServer] = useState(storedCalendarEvents || []);
+    const [date, setDate] = useState(new Date());
+    const [view, setView] = useState('month');
     
     const [showModal, setShowModal] = useState(false);
     const [selectedInfo, setSelectedInfo] = useState(null);
@@ -113,6 +115,9 @@ const Calendar = () => {
         setViewEventInfo(clickInfo);
         setShowViewModal(true);
     }
+
+    const handleNavigate = useCallback((newDate) => setDate(newDate), [setDate]);
+    const handleViewChange = useCallback((newView) => setView(newView), [setView]);
 
     const formatAndSetEventsForCalendar = (serverEvents) => {
         const formattedEvents = serverEvents.map(event => ({
@@ -235,8 +240,40 @@ const Calendar = () => {
         );
     });
 
+    const CustomToolbar = ({ label, onNavigate, onView, view }) => {
+        return (
+            <div className="rbc-toolbar flex-wrap mt-7">
+                <span className="rbc-btn-group">
+                    {!sidebarVisible && (
+                        <button
+                            type="button"
+                            onClick={() => setSidebarVisible(true)} 
+                            className="calendar-sidebar-toggle-show p-1 shadow-sm hover:text-gray-700 hidden lg:inline-block rounded-md hover:bg-gray-200"
+                            title="Show sidebar"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-[20.5px] h-[20.5px]">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 15l3-3m0 0l-3-3m3 3H7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
+                    )}
+                    <button type="button" onClick={() => onNavigate('PREV')}>Back</button>
+                    <button type="button" onClick={() => onNavigate('TODAY')}>Today</button>
+                    <button type="button" onClick={() => onNavigate('NEXT')}>Next</button>
+                </span>
+                <span className="rbc-toolbar-label">{label}</span>
+                <span className="rbc-btn-group">
+                    <button type="button" className={view === 'month' ? 'rbc-active' : ''} onClick={() => onView('month')}>Month</button>
+                    <button type="button" className={view === 'week' ? 'rbc-active' : ''} onClick={() => onView('week')}>Week</button>
+                    <button type="button" className={view === 'day' ? 'rbc-active' : ''} onClick={() => onView('day')}>Day</button>
+                    <button type="button" className={view === 'agenda' ? 'rbc-active' : ''} onClick={() => onView('agenda')}>Agenda</button>
+                </span>
+            </div>
+        );
+    };
+
     const components = useMemo(() => ({
         event: Event,
+        toolbar: CustomToolbar,
     }), []);
 
     return (
@@ -249,7 +286,7 @@ const Calendar = () => {
                                 <div className="bg-gray-100 p-2 flex justify-between items-center border-b border-gray-200">
                                     <h5 className="mb-0 text-base font-semibold">Events</h5>
                                     <button type="button" onClick={() => setSidebarVisible(false)} title="Hide sidebar" className="lg:inline-block p-1 rounded-md hover:bg-gray-200">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-[20.5px] h-[20.5px]">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 9l-3 3m0 0l3 3m-3-3h7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </button>
@@ -283,35 +320,23 @@ const Calendar = () => {
                             </div>
                         </div>
                     )}
-
-                    <div className="calendar-main-area flex flex-col flex-grow p-0 lg:p-2 relative">
-                        {!sidebarVisible && (
-                            <button
-                                type="button"
-                                onClick={() => setSidebarVisible(true)} 
-                                className="calendar-sidebar-toggle-show absolute top-2 left-2 p-1 shadow-sm hidden lg:inline-block rounded-md hover:bg-gray-200"
-                                title="Show sidebar"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 15l3-3m0 0l-3-3m3 3H7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </button>
-                        )}
-                        <div className="flex-grow calendar-fullcalendar-wrapper">
-                             <BigCalendar
+                        <div className="flex-grow calendar-fullcalendar-wrapper relative">
+                            <BigCalendar
                                 localizer={localizer}
                                 events={events}
                                 selectable
                                 resizable
                                 onSelectSlot={handleSelectSlot}
                                 onSelectEvent={handleSelectEvent}
-                                defaultView="month"
+                                view={view}
+                                date={date}
+                                onNavigate={handleNavigate}
+                                onView={handleViewChange}
                                 views={['month', 'week', 'day', 'agenda']}
                                 components={components}
                                 className="rbc-calendar-height"
                             />
                         </div>
-                    </div>
                 </div>
 
                 {showModal && selectedInfo && (
